@@ -1,5 +1,6 @@
 import os
 import time
+from datetime import datetime
 
 import pandas as pd
 import requests
@@ -13,6 +14,32 @@ api_key = os.getenv("ETHERSCAN_API_KEY")
 
 # Wallet address to extract data from
 wallet_address = '0xF5C9F957705bea56a7e806943f98F7777B995826'
+
+
+def get_block_number(dateblock, timeblock, strategy):
+    # Convert date and time to Unix timestamp
+    datetime_str = f"{dateblock} {timeblock}"
+    datetime_obj = datetime.strptime(datetime_str, "%Y-%m-%d %H:%M:%S")
+    timestamp = int(datetime_obj.timestamp())
+
+    # API endpoint URL
+    url = f"https://api.etherscan.io/api?module=block&action=getblocknobytime&timestamp={timestamp}&closest={strategy}&apikey={api_key}"
+
+    # Make the API request
+    response = requests.get(url)
+
+    # Check if the request was successful
+    if response.status_code == 200:
+        # Parse the JSON response
+        data = response.json()
+        # Check if the response contains block number information
+        if data['status'] == '1':
+            block_number = int(data['result'])
+            return block_number
+        else:
+            raise Exception("couldn't fetch blockNumer , check for request parameters")
+    else:
+        raise Exception("Fetching blockNumber failed")
 
 
 # Function to fetch transactions in batches
@@ -42,8 +69,11 @@ def extract_wallet_data(address, start_block, end_block):
 # Main function
 def main():
     # random blocks
-    start_block = 16308190
-    end_block = 16408190
+    start_block = get_block_number("2023-04-15", "00:00:00", 'after')
+    end_block = get_block_number("2024-03-09", "00:00:00", 'before')
+    if end_block < start_block:
+        raise Exception("Ending time is before beginning time")
+
     # extract data
     wallet_data = extract_wallet_data(wallet_address, start_block, end_block)
     if wallet_data:
